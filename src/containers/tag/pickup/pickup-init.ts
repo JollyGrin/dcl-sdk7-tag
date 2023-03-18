@@ -5,6 +5,7 @@ import {
   Entity,
   executeTask,
   InputAction,
+  inputSystem,
   Material,
   MeshCollider,
   MeshRenderer,
@@ -18,7 +19,8 @@ import { getUserData } from '~system/UserIdentity'
 import { Totem } from '../totem/totem-components'
 
 import { MessageBus } from '@dcl/sdk/message-bus'
-import { MB_PICKUP } from '../MessageBus/constants'
+import { MB_PICKUP, MB_REMOVE } from '../MessageBus/constants'
+import { PickupSphere, PickupSphereType } from './pickup-components'
 
 const sceneMessageBus = new MessageBus()
 
@@ -29,22 +31,47 @@ export const CreatePickup = (): void => {
   })
 
   sceneMessageBus.on(MB_PICKUP, ({ avatarId }) => {
-    PickupFactory(avatarId, true)
+    executeTask(async () => {
+      let { data } = await getUserData({})
+      if (!data) return
+
+      const isSelf = avatarId === data?.userId
+      console.log(avatarId, data?.userId, isSelf)
+      console.log(avatarId, data?.userId, isSelf)
+      PickupFactory({ userId: avatarId, displayName: data.displayName }, !isSelf)
+    })
+  })
+
+  sceneMessageBus.on(MB_REMOVE, ({ userId, displayName }) => {
+    for (const [entity] of engine.getEntitiesWith(PickupSphere)) {
+      const sphereUserId = PickupSphere.get(entity).userId
+      const isSelectedSphere = sphereUserId === userId
+
+      if (isSelectedSphere) {
+        console.log(`${displayName} was tagged!`)
+        engine.removeEntity(entity)
+      }
+    }
   })
 
   engine.addSystem(PickupSystem)
+  engine.addSystem(RemoveSphereSystem)
 }
 
 /* ################## */
 
-const PickupFactory = (AvatarId: string, withCollider = false): Entity => {
+const PickupFactory = ({ userId, displayName = 'FooBar' }: PickupSphereType, withCollider = false): Entity => {
   const LeftHandParent = engine.addEntity()
   AvatarAttach.createOrReplace(LeftHandParent, {
-    avatarId: AvatarId,
+    avatarId: userId,
     anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG
   })
 
   const PickupBall = engine.addEntity()
+  PickupSphere.createOrReplace(PickupBall, {
+    userId,
+    displayName
+  })
   MeshRenderer.setSphere(PickupBall)
   withCollider && MeshCollider.setSphere(PickupBall)
   Transform.createOrReplace(PickupBall, {
@@ -57,20 +84,6 @@ const PickupFactory = (AvatarId: string, withCollider = false): Entity => {
     albedoColor: transparentMaterial,
     emissiveColor: transparentMaterial
   })
-
-  pointerEventsSystem.onPointerDown(
-    PickupBall,
-    () => {
-      console.log('HITTTTTTTTTTTTT')
-      engine.removeEntity(PickupBall)
-    },
-    {
-      button: InputAction.IA_PRIMARY,
-      hoverText: 'Press E to spawn',
-      showFeedback: true,
-      maxDistance: 4
-    }
-  )
 
   return PickupBall
 }
@@ -114,8 +127,21 @@ const PickupTheBall = () => {
     console.log(data)
 
     if (data?.userId) {
-      PickupFactory(data.userId)
-      PickupMessageBus(data.userId)
+      const { userId, displayName } = data
+      PickupFactory({ userId, displayName })
+      PickupMessageBus(userId)
     }
   })
+}
+
+const RemoveSphereSystem = () => {
+  const Spheres = engine.getEntitiesWith(PickupSphere)
+
+  for (const [entity] of Spheres) {
+    if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN, entity)) {
+      const { userId, displayName } = PickupSphere.get(entity)
+      sceneMessageBus.emit(MB_REMOVE, { userId, displayName })
+      engine.removeEntity(entity)
+    }
+  }
 }

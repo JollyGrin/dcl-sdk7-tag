@@ -26,6 +26,6 @@ const totemFactory = (category: TotemCategoryType, { x, y, z }: Vector3): Entity
 
 export const CreateTotems = () => {
   const totemRed = totemFactory('red', { x: 8, y: 1, z: 8 })
-  const totemBlue = totemFactory('blue', { x: 10, y: 1, z: 8 })
-  const totemGreen = totemFactory('green', { x: 12, y: 1, z: 8 })
+  // const totemBlue = totemFactory('blue', { x: 10, y: 1, z: 8 })
+  // const totemGreen = totemFactory('green', { x: 12, y: 1, z: 8 })
 }
