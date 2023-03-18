@@ -56,13 +56,14 @@ export const CreatePickup = (): void => {
 
   engine.addSystem(PickupSystem)
   engine.addSystem(RemoveSphereSystem)
+  engine.addSystem(TouchSystem)
 }
 
 /* ################## */
 
 const PickupFactory = ({ userId, displayName = 'FooBar' }: PickupSphereType, withCollider = false): Entity => {
-  const LeftHandParent = engine.addEntity()
-  AvatarAttach.createOrReplace(LeftHandParent, {
+  const Parent = engine.addEntity()
+  AvatarAttach.createOrReplace(Parent, {
     avatarId: userId,
     anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG
   })
@@ -75,7 +76,7 @@ const PickupFactory = ({ userId, displayName = 'FooBar' }: PickupSphereType, wit
   MeshRenderer.setSphere(PickupBall)
   withCollider && MeshCollider.setSphere(PickupBall)
   Transform.createOrReplace(PickupBall, {
-    parent: LeftHandParent,
+    parent: Parent,
     position: Vector3.create(0, -1, 0)
   })
 
@@ -116,6 +117,24 @@ const PickupSystem = () => {
     if (isTouching) {
       const mutablePlayerEntity = Transform.getMutable(engine.PlayerEntity)
       mutablePlayerEntity.position = Vector3.create(15, 0, 15)
+      PickupTheBall()
+    }
+  }
+}
+
+const TouchSystem = () => {
+  if (!Transform.get(engine.PlayerEntity)) return // prevents crash on first render
+
+  /*
+    Apparently the entity position of the sphere is 0 because it's attached to a parent. And the parent doesn't have a transform position
+  */
+  const Spheres = engine.getEntitiesWith(PickupSphere)
+  for (const [entity] of Spheres) {
+    const boxPosition = Transform.get(entity).position
+    const playerPosition = Transform.get(engine.PlayerEntity).position
+
+    const isTouching = isPlayerNearBox(playerPosition, boxPosition, 1.5)
+    if (isTouching) {
       PickupTheBall()
     }
   }
