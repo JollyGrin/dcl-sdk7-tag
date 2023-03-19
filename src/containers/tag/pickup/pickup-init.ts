@@ -56,7 +56,7 @@ export const CreatePickup = (): void => {
 
   engine.addSystem(PickupSystem)
   engine.addSystem(RemoveSphereSystem)
-  engine.addSystem(TouchSystem)
+  // engine.addSystem(TouchSystem)
 }
 
 /* ################## */

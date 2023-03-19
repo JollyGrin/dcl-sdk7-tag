@@ -7,3 +7,4 @@ import { CreateTotems } from './containers/tag/totem/totem-init'
 export * from '@dcl/sdk'
 
 Tag.init()
+
